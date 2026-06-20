@@ -1,0 +1,13 @@
+# Author: Suresh D R | AI Product Developer & Technology Mentor
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rag-config
+  namespace: insurance-rag
+data:
+  AWS_REGION: "eu-north-1"
+  S3_BUCKET: "insurance-rag-bucket-2026"
+  CHROMA_PATH: "/tmp/chromadb"
+  TENANT_ID: "star-health"
+  LOG_LEVEL: "INFO"
+  ENVIRONMENT: "production"

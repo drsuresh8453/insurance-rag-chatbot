@@ -1,0 +1,16 @@
+{system_prompt}
+
+Policy excerpts covering different sections:
+
+{context}
+
+Customer question: {question}
+
+Provide a structured summary organised by:
+1. What is covered (key benefits)
+2. Key limits and sub-limits
+3. What is NOT covered (major exclusions)
+4. Waiting periods that apply
+5. How to use the policy (cashless / reimbursement)
+
+Keep each section brief and in plain English.

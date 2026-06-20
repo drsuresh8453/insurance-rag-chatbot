@@ -1,0 +1,8 @@
+# Author: Suresh D R | AI Product Developer & Technology Mentor
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: insurance-rag
+  labels:
+    app: insurance-rag-chatbot
+    author: suresh-dr

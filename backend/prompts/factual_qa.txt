@@ -1,0 +1,14 @@
+{system_prompt}
+
+Policy document excerpts relevant to the customer question:
+
+{context}
+
+Customer question: {question}
+
+Answer the question directly. Include:
+- The direct answer (yes/no/amount/process)
+- Any important conditions, exceptions, or waiting periods
+- The exact source section name
+
+Keep the answer clear and conversational.

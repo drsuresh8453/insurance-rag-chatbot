@@ -1,0 +1,30 @@
+# Author: Suresh D R | AI Product Developer & Technology Mentor
+# Single container — FastAPI backend + Streamlit frontend together
+version: '3.9'
+
+services:
+  app:
+    build: ./backend
+    ports:
+      - "8000:8000"
+      - "8501:8501"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - S3_BUCKET=${S3_BUCKET}
+      - CHROMA_PATH=/tmp/chromadb
+      - ENVIRONMENT=development
+      - BACKEND_URL=http://localhost:8000
+    volumes:
+      - chromadb_data:/tmp/chromadb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  chromadb_data:

@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: insurance-rag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: app
+          image: YOUR_ECR_REGISTRY/insurance-rag-app:latest
+          ports:
+            - containerPort: 8000
+            - containerPort: 8501
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: OPENAI_API_KEY
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: rag-config
+                  key: AWS_REGION
+            - name: S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: rag-config
+                  key: S3_BUCKET
+            - name: CHROMA_PATH
+              value: "/tmp/chromadb"
+            - name: BACKEND_URL
+              value: "http://localhost:8000"
+            - name: ENVIRONMENT
+              value: "production"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          volumeMounts:
+            - name: chromadb-storage
+              mountPath: /tmp/chromadb
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: chromadb-storage
+          emptyDir: {}

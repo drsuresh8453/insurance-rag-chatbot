@@ -1,0 +1,13 @@
+{system_prompt}
+
+Policy excerpts for comparison:
+
+{context}
+
+Customer question: {question}
+
+Structure your answer as:
+- What Plan A offers for this topic
+- What Plan B offers for this topic
+- Key difference in one sentence
+- Which is better for the customer situation (if clear from documents)

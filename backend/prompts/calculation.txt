@@ -1,0 +1,14 @@
+{system_prompt}
+
+Policy information relevant to this calculation:
+
+{context}
+
+Customer question: {question}
+
+Show your calculation clearly:
+- State what the policy covers for each item
+- State what the hospital charged for each item
+- Calculate the difference (what the customer pays)
+- Give the final total the insurance will pay
+- Format as a simple table where possible.

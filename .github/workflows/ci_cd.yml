@@ -1,0 +1,135 @@
+# ci_cd.yml — Author: Suresh D R | AI Product Developer & Technology Mentor
+# Triggered on every push to main.
+# Pipeline: test → build → push to ECR → deploy to EKS → health check → rollback if fail
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION:   eu-north-1
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  CLUSTER_NAME: insurance-rag-cluster-2026
+  NAMESPACE:    insurance-rag
+  IMAGE_NAME:   insurance-rag-app
+
+jobs:
+  # ── JOB 1: Run Tests ──────────────────────────────────────
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          OPENAI_API_KEY: test-key
+          AWS_ACCESS_KEY_ID: test-key
+          AWS_SECRET_ACCESS_KEY: test-secret
+          AWS_REGION: eu-north-1
+          S3_BUCKET: test-bucket
+          CHROMA_PATH: /tmp/chromadb-test
+        run: pytest tests/ -v --tb=short
+
+  # ── JOB 2: Build & Push Image ─────────────────────────────
+  build:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=${{ env.ECR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        run: |
+          docker build -t ${{ steps.meta.outputs.tag }} ./backend
+          docker tag  ${{ steps.meta.outputs.tag }} ${{ env.ECR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ steps.meta.outputs.tag }}
+          docker push ${{ env.ECR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          echo "✅ Pushed: ${{ steps.meta.outputs.tag }}"
+
+  # ── JOB 3: Deploy to EKS ──────────────────────────────────
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+
+      - name: Replace ECR registry placeholder
+        run: |
+          sed -i "s|YOUR_ECR_REGISTRY|${{ env.ECR_REGISTRY }}|g" k8s/backend-deployment.yaml
+
+      - name: Pin image to this commit SHA
+        run: |
+          sed -i "s|${{ env.IMAGE_NAME }}:latest|${{ env.IMAGE_NAME }}:${{ github.sha }}|g" k8s/backend-deployment.yaml
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap.yaml
+          kubectl apply -f k8s/backend-deployment.yaml
+          kubectl apply -f k8s/backend-service.yaml
+          kubectl apply -f k8s/ingress.yaml
+
+      - name: Wait for rollout
+        run: kubectl rollout status deployment/app -n ${{ env.NAMESPACE }} --timeout=300s
+
+      - name: Health check
+        run: |
+          INGRESS=$(kubectl get ingress rag-ingress -n ${{ env.NAMESPACE }} \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "Live URL: http://$INGRESS"
+          sleep 15
+          curl -f http://$INGRESS/health || exit 1
+          echo "✅ Health check passed"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "❌ Deploy failed — rolling back"
+          kubectl rollout undo deployment/app -n ${{ env.NAMESPACE }} || true
+          echo "✅ Rollback complete"
