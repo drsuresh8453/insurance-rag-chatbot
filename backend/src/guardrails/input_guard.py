@@ -12,8 +12,12 @@ INJECTION = [
     r"override (your|all) (instructions|rules)", r"disregard your"
 ]
 OUT_SCOPE = [
-    r"(write|create) (code|script)", r"what is the (capital|population) of",
-    r"(weather|stock price|bitcoin)", r"(recipe|cook|food)"
+    r"(write|create) (code|script)",
+    r"what is the (capital|population) of",
+    r"(weather|stock price|bitcoin)",
+    r"(recipe|cook|food)",
+    r"(travel|trip|vacation|holiday|tour|flight|hotel booking|itinerary)",
+    r"(visa|passport) (application|requirement)",
 ]
 AADHAAR = r"\b[2-9]{1}[0-9]{3}\s?[0-9]{4}\s?[0-9]{4}\b"
 PHONE   = r"\b[6-9]\d{9}\b"
