@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: YOUR_ECR_REGISTRY/insurance-rag-app:latest
+          image: 668449743598.dkr.ecr.eu-north-1.amazonaws.com/insurance-rag-app:latest
           ports:
             - containerPort: 8000
             - containerPort: 8501
